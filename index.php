@@ -1,20 +1,35 @@
 <?php
+/**
+ * Página principal de autenticación con Google OAuth 2.0
+ * 
+ * Funcionalidad:
+ * - Si el usuario NO está autenticado: muestra el botón de login con Google
+ * - Si el usuario YA está autenticado: muestra su perfil (foto, nombre, email)
+ * 
+ * Flujo:
+ * 1. Inicializa el cliente de Google con las credenciales de config.php
+ * 2. Genera la URL de autenticación que redirige a Google
+ * 3. Verifica si existe $_SESSION['user'] para determinar el estado de autenticación
+ */
+
+// Iniciar sesión PHP para mantener el estado del usuario
 session_start();
 
-// Cargar autoloader de Composer
+// Cargar autoloader de Composer (incluye Google API Client)
 require_once __DIR__ . '/vendor/autoload.php';
 
-// Cargar configuración
+// Cargar configuración (client_id, client_secret, redirect_uri, scopes)
 $config = require __DIR__ . '/config.php';
 
-// Inicializar el cliente de Google
+// Inicializar el cliente de Google OAuth 2.0
 $client = new Google_Client();
-$client->setClientId($config['client_id']);
-$client->setClientSecret($config['client_secret']);
-$client->setRedirectUri($config['redirect_uri']);
-$client->addScope($config['scopes']);
+$client->setClientId($config['client_id']);           // ID de cliente de Google Cloud Console
+$client->setClientSecret($config['client_secret']);   // Secreto de cliente
+$client->setRedirectUri($config['redirect_uri']);     // URL de callback (redirect.php)
+$client->addScope($config['scopes']);                 // Permisos solicitados (email, profile)
 
-// Generar URL de autenticación de Google
+// Generar URL de autenticación que redirige a Google
+// Esta URL incluye todos los parámetros necesarios para el flujo OAuth
 $authUrl = $client->createAuthUrl();
 ?>
 <!DOCTYPE html>
@@ -139,30 +154,37 @@ $authUrl = $client->createAuthUrl();
         <h1>🔐 Autenticación con Google</h1>
         
         <?php if (isset($_SESSION['user'])): ?>
-            <!-- Usuario autenticado -->
+            <!-- USUARIO AUTENTICADO: Mostrar perfil -->
             <p>¡Bienvenido de nuevo!</p>
             <div class="user-info">
+                <!-- Foto de perfil de Google -->
                 <?php if (isset($_SESSION['user']['picture'])): ?>
                     <img src="<?php echo htmlspecialchars($_SESSION['user']['picture']); ?>" alt="Foto de perfil">
                 <?php endif; ?>
                 
+                <!-- Nombre completo del usuario -->
                 <h2><?php echo htmlspecialchars($_SESSION['user']['name']); ?></h2>
                 
+                <!-- Email verificado de Google -->
                 <p><strong>Email:</strong><br>
                 <?php echo htmlspecialchars($_SESSION['user']['email']); ?></p>
                 
+                <!-- ID único de Google (útil para vincular con tu base de datos) -->
                 <?php if (isset($_SESSION['user']['id'])): ?>
                     <p><strong>Google ID:</strong><br>
                     <?php echo htmlspecialchars($_SESSION['user']['id']); ?></p>
                 <?php endif; ?>
                 
+                <!-- Botón para cerrar sesión -->
                 <a href="logout.php" class="logout-btn">Cerrar Sesión</a>
             </div>
         <?php else: ?>
-            <!-- Usuario no autenticado -->
+            <!-- USUARIO NO AUTENTICADO: Mostrar botón de login -->
             <p>Inicia sesión con tu cuenta de Google para acceder a la aplicación. Es rápido, seguro y no necesitas crear una nueva cuenta.</p>
             
+            <!-- Botón que redirige a Google OAuth -->
             <a href="<?php echo htmlspecialchars($authUrl); ?>" class="google-btn">
+                <!-- Logo oficial de Google en SVG -->
                 <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>

@@ -1,74 +1,93 @@
 <?php
+/**
+ * Callback de OAuth 2.0 - Procesa la respuesta de Google
+ * 
+ * Este archivo es el corazón del proceso de autenticación OAuth.
+ * Google redirige aquí después de que el usuario autoriza la aplicación.
+ * 
+ * Flujo:
+ * 1. Recibe el código de autorización de Google ($_GET['code'])
+ * 2. Intercambia el código por un token de acceso
+ * 3. Usa el token para obtener información del usuario
+ * 4. Guarda los datos en la sesión
+ * 5. Redirige al usuario a index.php
+ */
+
+// Iniciar sesión para almacenar datos del usuario
 session_start();
 
 // Cargar autoloader de Composer
 require_once __DIR__ . '/vendor/autoload.php';
 
-// Cargar configuración
+// Cargar configuración OAuth
 $config = require __DIR__ . '/config.php';
 
-// Inicializar el cliente de Google
+// Inicializar el cliente de Google con las mismas credenciales que index.php
 $client = new Google_Client();
 $client->setClientId($config['client_id']);
 $client->setClientSecret($config['client_secret']);
 $client->setRedirectUri($config['redirect_uri']);
 $client->addScope($config['scopes']);
 
-// Verificar si hay un código de autorización en la URL
+// PASO 1: Verificar si Google envió un código de autorización
 if (!isset($_GET['code'])) {
-    // Si no hay código, verificar si hay un error
+    // Caso 1: El usuario canceló o hubo un error en Google
     if (isset($_GET['error'])) {
         die('Error de autenticación: ' . htmlspecialchars($_GET['error']));
     }
     
-    // Si no hay código ni error, redirigir al inicio
+    // Caso 2: Acceso directo sin código (no debería pasar)
     header('Location: index.php');
     exit;
 }
 
 try {
-    // Intercambiar el código de autorización por un token de acceso
+    // PASO 2: Intercambiar el código de autorización por un token de acceso
+    // Este es el paso más importante: el código es temporal y de un solo uso
+    // Se envía al servidor de Google junto con el client_secret para obtener el token
     $token = $client->fetchAccessTokenWithAuthCode($_GET['code']);
     
-    // Verificar si hubo un error al obtener el token
+    // Verificar si Google devolvió un error al intercambiar el código
     if (isset($token['error'])) {
         throw new Exception('Error al obtener el token: ' . $token['error']);
     }
     
-    // Establecer el token de acceso en el cliente
+    // PASO 3: Configurar el token en el cliente para hacer peticiones autenticadas
     $client->setAccessToken($token);
     
-    // Obtener información del perfil del usuario
+    // PASO 4: Obtener información del perfil del usuario desde Google
+    // Creamos un servicio OAuth2 para acceder a la API de información de usuario
     $oauth2 = new Google_Service_Oauth2($client);
     $userInfo = $oauth2->userinfo->get();
     
-    // Extraer datos del usuario
+    // PASO 5: Extraer y estructurar los datos del usuario
     $userData = [
-        'id' => $userInfo->id,
-        'email' => $userInfo->email,
-        'name' => $userInfo->name,
-        'given_name' => $userInfo->givenName,
-        'family_name' => $userInfo->familyName,
-        'picture' => $userInfo->picture,
-        'verified_email' => $userInfo->verifiedEmail,
-        'locale' => $userInfo->locale
+        'id' => $userInfo->id,                          // ID único de Google (usar como clave primaria)
+        'email' => $userInfo->email,                    // Email verificado por Google
+        'name' => $userInfo->name,                      // Nombre completo
+        'given_name' => $userInfo->givenName,           // Nombre
+        'family_name' => $userInfo->familyName,         // Apellido
+        'picture' => $userInfo->picture,                // URL de la foto de perfil
+        'verified_email' => $userInfo->verifiedEmail,   // true si Google verificó el email
+        'locale' => $userInfo->locale                   // Idioma preferido (ej: 'es', 'en')
     ];
     
-    // Guardar información del usuario en la sesión
-    $_SESSION['user'] = $userData;
-    $_SESSION['access_token'] = $token;
+    // PASO 6: Guardar información del usuario en la sesión PHP
+    $_SESSION['user'] = $userData;              // Datos del usuario para mostrar en la UI
+    $_SESSION['access_token'] = $token;         // Token para futuras peticiones a Google APIs
     
-    // Opcional: Guardar el token de actualización si está disponible
+    // PASO 7: Guardar el refresh token si está disponible (solo la primera vez)
+    // El refresh token permite renovar el access token sin pedir autorización de nuevo
     if (isset($token['refresh_token'])) {
         $_SESSION['refresh_token'] = $token['refresh_token'];
     }
     
-    // Redirigir al usuario a la página principal
+    // PASO 8: Redirigir al usuario a la página principal (ya autenticado)
     header('Location: index.php');
     exit;
     
 } catch (Exception $e) {
-    // Manejar errores
+    // Manejo de errores: Mostrar página de error amigable
     echo '<!DOCTYPE html>
     <html lang="es">
     <head>
