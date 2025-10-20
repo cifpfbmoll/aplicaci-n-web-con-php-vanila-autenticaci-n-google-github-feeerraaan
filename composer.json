@@ -1,0 +1,8 @@
+{
+    "name": "php-google-auth/simple-oauth",
+    "description": "Simple PHP application with Google OAuth authentication",
+    "require": {
+        "php": ">=7.4",
+        "google/apiclient": "^2.15"
+    }
+}

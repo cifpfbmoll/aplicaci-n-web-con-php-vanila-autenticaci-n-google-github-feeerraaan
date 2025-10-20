@@ -1,0 +1,10 @@
+array (
+  'id' => '112745618863728704857',
+  'email' => 'fazpiazuadrover@gmail.com',
+  'name' => 'Ferran Azpiazu Adrover',
+  'given_name' => 'Ferran',
+  'family_name' => 'Azpiazu Adrover',
+  'picture' => 'https://lh3.googleusercontent.com/a/ACg8ocJZLzkiRYPXswYw4Xvd0xrGslndHlQ2l296cTrMetYvXHV40A=s96-c',
+  'verified_email' => true,
+  'locale' => NULL,
+)
